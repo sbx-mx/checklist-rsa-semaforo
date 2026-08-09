@@ -42,7 +42,7 @@ class RSADigitalTests(unittest.TestCase):
     def test_health(self):
         with self.get('/api/health') as response:
             payload=json.load(response)
-        self.assertEqual(payload,{'ok':True,'items':140,'version':3.2})
+        self.assertEqual(payload,{'ok':True,'items':140,'version':3.3})
 
     def test_operational_interface_stays_clean(self):
         html=Path('index.html').read_text(encoding='utf-8')
@@ -60,10 +60,20 @@ class RSADigitalTests(unittest.TestCase):
         self.assertIn('id="backToRouteBtn"',html)
         self.assertIn('id="printStore"',html)
         self.assertIn('Evidencia',html)
-        self.assertIn('Guardar y continuar',html)
+        self.assertIn('Guardar y siguiente',html)
         self.assertIn('opportunities',script)
         self.assertNotIn('Ver criterio',html)
         self.assertNotIn('Ocultar acción',html)
+
+    def test_agile_route_keeps_optional_content_hidden(self):
+        html=Path('index.html').read_text(encoding='utf-8')
+        script=Path('static/app.js').read_text(encoding='utf-8')
+        self.assertIn('No necesitas evaluar todos los puntos',html)
+        self.assertIn('Guardar y siguiente',html)
+        self.assertIn('Cumple y siguiente',script)
+        self.assertIn('modalCriterionOpen = false',script)
+        self.assertIn("modalStatus.dataset.modalStatus === 'fail'",script)
+        self.assertIn('data-modal-toggle="evidence"',script)
 
     def test_cleanup_workflow_is_manual_and_guarded(self):
         workflow=Path('.github/workflows/cleanup-obsolete.yml').read_text(encoding='utf-8')

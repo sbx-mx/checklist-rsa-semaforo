@@ -1,6 +1,8 @@
-# RSA Digital 3.2 · Juntémonos más
+# RSA Digital 3.3 · Navegación Ágil
 
 Checklist operativo ICA y semáforo RSA con evaluación modal, evidencia en cualquier resultado, recorrido recuperable y exportación resumida de oportunidades.
+
+La ruta no exige revisar los 140 puntos: presenta primero los controles con mayor impacto en RSA y permite registrar **Cumple y siguiente** con un solo toque. Criterio y evidencia permanecen ocultos hasta que el auditor los solicita; una respuesta **No cumple** abre automáticamente la documentación.
 
 ## 10 mejoras de navegación
 

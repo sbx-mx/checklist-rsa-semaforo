@@ -1,4 +1,4 @@
-"""Servidor Python sin dependencias para RSA Digital 3.2."""
+"""Servidor Python sin dependencias para RSA Digital 3.3."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ class RSAServer(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "RSADigital/3.2"
+    server_version = "RSADigital/3.3"
 
     def log_message(self, fmt, *args):
         print(f"{self.address_string()} - {fmt % args}")
@@ -71,7 +71,7 @@ class Handler(BaseHTTPRequestHandler):
         if route == "/api/health":
             try:
                 payload = load_checklist()
-                self.send_json({"ok": True, "items": payload["metadata"]["item_count"], "version": 3.2})
+                self.send_json({"ok": True, "items": payload["metadata"]["item_count"], "version": 3.3})
             except (OSError, ValueError, json.JSONDecodeError) as exc:
                 self.send_json({"ok": False, "error": str(exc)}, 500)
             return
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8000"))
     server = create_server(host, port)
-    print(f"RSA Digital 3.2: http://{host}:{port}")
+    print(f"RSA Digital 3.3: http://{host}:{port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

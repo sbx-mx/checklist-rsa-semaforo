@@ -6,6 +6,8 @@
   let saveTimer;
   let activeId = null;
   let modalOriginalStatus = '';
+  let modalCriterionOpen = false;
+  let modalEvidenceOpen = false;
   const history = [];
   const state = {
     status: {}, notes: {}, actions: {}, owner: {}, due: {}, photos: {},
@@ -94,7 +96,7 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       try {
-        const draft = {version: 3.2, status: state.status, notes: state.notes, actions: state.actions,
+        const draft = {version: 3.3, status: state.status, notes: state.notes, actions: state.actions,
           owner: state.owner, due: state.due, meta: state.meta, updated_at: new Date().toISOString()};
         localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
       } catch (error) { console.warn('No fue posible guardar el borrador', error); }
@@ -158,13 +160,13 @@
 
   function itemHtml(item) {
     const status = state.status[item.id] || '';
-    const action = state.view === 'fail' ? 'Abrir y corregir' : status ? 'Revisar detalle' : 'Evaluar punto';
+    const action = state.view === 'fail' ? 'Revisar oportunidad' : status ? 'Revisar detalle' : 'Más opciones';
     return `<article class="item ${status}" data-id="${item.id}">
       <div class="priority-strip"><span>${priorityLabel(item)}</span><span>${esc(item.section)}</span></div>
       <div class="item-main">
         <div><div class="item-code">${esc(item.id)} · ${esc(item.code)}</div><div class="question">${esc(item.question)}</div>
         <div class="badges"><span class="badge ${badgeClass(item.category)}">${esc(item.category)}</span><span class="badge">${item.points} pts ICA</span>${item.semCount ? `<span class="badge">RSA · ${esc(item.semCategory)}</span>` : ''}${status ? `<span class="badge status-${status}">${statusLabel(status)}</span>` : ''}</div></div>
-        <button class="open-evaluation" type="button" data-action="open"><span>${status ? '↗' : '→'}</span><strong>${action}</strong><small>Criterio, respuesta y evidencia</small></button>
+        <div class="fast-actions">${state.view !== 'evidence' ? `<button class="quick-comply" type="button" data-action="quick-comply"><span>✓</span><strong>${state.view === 'fail' ? 'Corregido: cumple' : 'Cumple y siguiente'}</strong></button>` : ''}<button class="open-evaluation" type="button" data-action="open"><strong>${action}</strong><small>No cumple · No aplica · Evidencia</small></button></div>
       </div>
     </article>`;
   }
@@ -174,16 +176,17 @@
     const isComply = status === 'comply';
     return `<article class="modal-point" data-id="${item.id}">
       <header class="modal-point-head"><div><div class="item-code">${esc(item.id)} · ${esc(item.code)}</div><h2 id="modalQuestion">${esc(item.question)}</h2><div class="badges"><span class="badge ${badgeClass(item.category)}">${esc(item.category)}</span><span class="badge">${item.points} pts ICA</span>${item.semCount ? `<span class="badge">RSA · ${esc(item.semCategory)}</span>` : ''}</div></div><div class="impact-card"><span>Impacto</span><strong>${priorityLabel(item)}</strong><small>${item.semCount ? `Puede sumar 1 ${esc(item.semCategory)} al semáforo.` : `Puede restar ${item.points} puntos ICA.`}</small></div></header>
-      <section class="criterion-card"><span>Criterio de evaluación</span><p>${esc(item.context)}</p></section>
       <section class="modal-decision"><div><span class="modal-section-label">1 · Decide</span><h3>¿Qué observaste?</h3></div><div class="modal-status-actions">
         <button class="modal-status comply ${status === 'comply' ? 'active' : ''}" data-modal-status="comply" type="button"><span>✓</span><strong>Cumple</strong><small>La práctica está asegurada</small></button>
         <button class="modal-status fail ${status === 'fail' ? 'active' : ''}" data-modal-status="fail" type="button"><span>!</span><strong>No cumple</strong><small>Requiere corrección</small></button>
         <button class="modal-status na ${status === 'na' ? 'active' : ''}" data-modal-status="na" type="button"><span>—</span><strong>No aplica</strong><small>No corresponde observarlo</small></button>
       </div></section>
-      <section class="modal-evidence"><div class="evidence-heading"><div><span class="modal-section-label">2 · Documenta</span><h3>Evidencia ${isComply ? 'del cumplimiento' : 'de la observación'}</h3><p>Opcional en cualquier respuesta. Úsala para reconocer, corregir o dar seguimiento.</p></div><span class="evidence-tag">Foto opcional</span></div>
+      <div class="optional-controls"><span>Información adicional</span><div><button class="optional-toggle ${modalCriterionOpen ? 'active' : ''}" type="button" data-modal-toggle="criterion" aria-expanded="${modalCriterionOpen}"><span>i</span><strong>${modalCriterionOpen ? 'Ocultar criterio' : 'Ver criterio'}</strong></button><button class="optional-toggle ${modalEvidenceOpen ? 'active' : ''}" type="button" data-modal-toggle="evidence" aria-expanded="${modalEvidenceOpen}"><span>＋</span><strong>${modalEvidenceOpen ? 'Ocultar evidencia' : 'Agregar evidencia'}</strong>${hasEvidence(item.id) ? '<b>Guardada</b>' : ''}</button></div></div>
+      ${modalCriterionOpen ? `<section class="criterion-card"><span>Criterio de evaluación</span><p>${esc(item.context)}</p></section>` : ''}
+      ${modalEvidenceOpen ? `<section class="modal-evidence"><div class="evidence-heading"><div><span class="modal-section-label">2 · Documenta</span><h3>Evidencia ${isComply ? 'del cumplimiento' : 'de la observación'}</h3><p>Opcional en cualquier respuesta. Úsala para reconocer, corregir o dar seguimiento.</p></div><span class="evidence-tag">Foto opcional</span></div>
         <div class="evidence-grid"><label>Situación observada<textarea data-field="notes" placeholder="${isComply ? 'Describe la práctica correcta…' : 'Describe lo observado…'}">${esc(state.notes[item.id] || '')}</textarea></label><label>Acción o seguimiento<textarea data-field="actions" placeholder="${isComply ? 'Cómo se mantendrá este estándar…' : 'Qué se corrigió o queda pendiente…'}">${esc(state.actions[item.id] || '')}</textarea></label>
         <div class="owner-stack"><label>Responsable<input data-field="owner" value="${esc(state.owner[item.id] || '')}" placeholder="Nombre"></label><label>Fecha compromiso<input data-field="due" type="date" value="${esc(state.due[item.id] || '')}"></label><label class="photo-label"><span>Agregar evidencia</span><input class="photo-input" data-field="photos" type="file" accept="image/*" capture="environment" multiple></label><div class="photo-preview">${photoHtml(item.id)}</div></div></div>
-      </section>
+      </section>` : ''}
     </article>`;
   }
 
@@ -202,6 +205,8 @@
   function openEvaluation(id) {
     activeId = id;
     modalOriginalStatus = state.status[id] || '';
+    modalCriterionOpen = false;
+    modalEvidenceOpen = state.status[id] === 'fail' || hasEvidence(id);
     renderModalContent();
     const modal = $('evaluationModal');
     if (!modal.open) modal.showModal();
@@ -274,7 +279,7 @@
       ica_points:item.points, rsa:item.semCount ? item.semCategory : 'No cuenta', observation:state.notes[item.id] || '',
       corrective_action:state.actions[item.id] || '', owner:state.owner[item.id] || '', due_date:state.due[item.id] || '', photos:state.photos[item.id] || []
     }));
-    return {schema_version:3.2, exported_at:new Date().toISOString(), summary:{store:state.meta.store, auditor:state.meta.auditor, date:state.meta.date, shift:state.meta.shift, ica:result.ica, rsa_status:result.rsa, critical:result.crit, major:result.may, minor:result.men, opportunity_count:opportunities.length}, opportunities,
+    return {schema_version:3.3, exported_at:new Date().toISOString(), summary:{store:state.meta.store, auditor:state.meta.auditor, date:state.meta.date, shift:state.meta.shift, ica:result.ica, rsa_status:result.rsa, critical:result.crit, major:result.may, minor:result.men, opportunity_count:opportunities.length}, opportunities,
       audit_state:{status:state.status, notes:state.notes, actions:state.actions, owner:state.owner, due:state.due, photos:state.photos}};
   }
 
@@ -324,6 +329,16 @@
     scheduleSave(); render(); toast('Última respuesta restaurada');
   }
 
+  function quickComply(id) {
+    const previous = state.status[id] || '';
+    if (previous !== 'comply') {
+      history.push({id, previous});
+      if (history.length > 20) history.shift();
+      state.status[id] = 'comply';
+    }
+    scheduleSave(); render(); toast(state.view === 'fail' ? 'Oportunidad corregida' : 'Cumple · siguiente punto listo');
+  }
+
   function returnToRoute() {
     state.view = 'pending'; state.section = 'Todas'; state.query = ''; $('viewFilter').value = 'pending'; $('search').value = ''; render(); $('recorrido').scrollIntoView({behavior:'smooth', block:'start'});
   }
@@ -335,10 +350,17 @@
     $('undoBtn').addEventListener('click', undo);
     $('backToRouteBtn').addEventListener('click', returnToRoute);
     $('reviewFailsBtn').addEventListener('click', () => { state.view = 'fail'; state.section = 'Todas'; state.query = ''; $('search').value = ''; $('viewFilter').value = 'fail'; render(); $('recorrido').scrollIntoView({behavior:'smooth', block:'start'}); });
-    $('items').addEventListener('click', event => { const button = event.target.closest('[data-action="open"]'); if (button) openEvaluation(button.closest('[data-id]').dataset.id); });
+    $('items').addEventListener('click', event => {
+      const button = event.target.closest('button[data-action]'); if (!button) return;
+      const id = button.closest('[data-id]')?.dataset.id; if (!id) return;
+      if (button.dataset.action === 'quick-comply') quickComply(id);
+      else if (button.dataset.action === 'open') openEvaluation(id);
+    });
     $('evaluationModal').addEventListener('click', event => {
       const modalStatus = event.target.closest('[data-modal-status]');
-      if (modalStatus && activeId) { state.status[activeId] = modalStatus.dataset.modalStatus; scheduleSave(); renderModalContent(); calculate(); return; }
+      if (modalStatus && activeId) { state.status[activeId] = modalStatus.dataset.modalStatus; if (modalStatus.dataset.modalStatus === 'fail') modalEvidenceOpen = true; scheduleSave(); renderModalContent(); calculate(); return; }
+      const toggle = event.target.closest('[data-modal-toggle]');
+      if (toggle && activeId) { if (toggle.dataset.modalToggle === 'criterion') modalCriterionOpen = !modalCriterionOpen; else modalEvidenceOpen = !modalEvidenceOpen; renderModalContent(); return; }
       const remove = event.target.closest('[data-action="remove-photo"]');
       if (remove && activeId) { state.photos[activeId].splice(Number(remove.dataset.index), 1); scheduleSave(); renderModalContent(); calculate(); return; }
       if (event.target === $('evaluationModal')) finalizeModal(false);
