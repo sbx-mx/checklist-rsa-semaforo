@@ -1,12 +1,12 @@
 {
-  "name": "RSA Digital 3.0",
+  "name": "RSA Digital 3.1 · Ruta Verde",
   "short_name": "RSA Digital",
-  "description": "Checklist operativo ICA y semáforo RSA",
+  "description": "Ruta operativa guiada para checklist ICA y semáforo RSA",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f6f4ef",
+  "background_color": "#f7f3ed",
   "theme_color": "#006241",
   "lang": "es-MX",
   "icons": [

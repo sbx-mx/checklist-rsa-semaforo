@@ -1,32 +1,52 @@
-"""Servidor Python sin dependencias para RSA Digital 3.0."""
+"""Servidor Python sin dependencias para RSA Digital 3.1."""
 
 from __future__ import annotations
 
 import json
 import mimetypes
 import os
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent
 DATA_FILE = ROOT / "data" / "checklist.json"
+_DATA_LOCK = threading.Lock()
+_DATA_CACHE: tuple[int, dict] | None = None
 
 
 def load_checklist() -> dict:
-    payload = json.loads(DATA_FILE.read_text(encoding="utf-8"))
-    items = payload.get("items")
-    if not isinstance(items, list) or not items:
-        raise ValueError("La base del checklist está vacía")
-    identifiers = [item.get("id") for item in items]
-    if any(not value for value in identifiers) or len(identifiers) != len(set(identifiers)):
-        raise ValueError("La base contiene IDs vacíos o duplicados")
-    payload.setdefault("metadata", {})["item_count"] = len(items)
-    return payload
+    global _DATA_CACHE
+    modified = DATA_FILE.stat().st_mtime_ns
+    with _DATA_LOCK:
+        if _DATA_CACHE and _DATA_CACHE[0] == modified:
+            return _DATA_CACHE[1]
+        payload = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+        items = payload.get("items")
+        if not isinstance(items, list) or not items:
+            raise ValueError("La base del checklist está vacía")
+        required = {"id", "question", "category", "section", "points"}
+        for position, item in enumerate(items, 1):
+            missing = required.difference(item)
+            if missing:
+                raise ValueError(f"Registro {position} incompleto: {', '.join(sorted(missing))}")
+        identifiers = [item["id"] for item in items]
+        if any(not value for value in identifiers) or len(identifiers) != len(set(identifiers)):
+            raise ValueError("La base contiene IDs vacíos o duplicados")
+        payload.setdefault("metadata", {})["item_count"] = len(items)
+        _DATA_CACHE = (modified, payload)
+        return payload
+
+
+class RSAServer(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+    request_queue_size = 64
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "RSADigital/3.0"
+    server_version = "RSADigital/3.1"
 
     def log_message(self, fmt, *args):
         print(f"{self.address_string()} - {fmt % args}")
@@ -51,7 +71,7 @@ class Handler(BaseHTTPRequestHandler):
         if route == "/api/health":
             try:
                 payload = load_checklist()
-                self.send_json({"ok": True, "items": payload["metadata"]["item_count"], "version": 3})
+                self.send_json({"ok": True, "items": payload["metadata"]["item_count"], "version": 3.1})
             except (OSError, ValueError, json.JSONDecodeError) as exc:
                 self.send_json({"ok": False, "error": str(exc)}, 500)
             return
@@ -71,20 +91,19 @@ class Handler(BaseHTTPRequestHandler):
         self.send_content(candidate.read_bytes(), mime, cache=cache)
 
 
-def create_server(host: str = "127.0.0.1", port: int = 8000) -> ThreadingHTTPServer:
+def create_server(host: str = "127.0.0.1", port: int = 8000) -> RSAServer:
     load_checklist()
-    return ThreadingHTTPServer((host, port), Handler)
+    return RSAServer((host, port), Handler)
 
 
 if __name__ == "__main__":
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8000"))
     server = create_server(host, port)
-    print(f"RSA Digital 3.0: http://{host}:{port}")
+    print(f"RSA Digital 3.1: http://{host}:{port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
         server.server_close()
-

@@ -2,6 +2,7 @@ import json
 import threading
 import unittest
 import urllib.request
+from pathlib import Path
 
 import app
 
@@ -41,7 +42,22 @@ class RSADigitalTests(unittest.TestCase):
     def test_health(self):
         with self.get('/api/health') as response:
             payload=json.load(response)
-        self.assertEqual(payload,{'ok':True,'items':140,'version':3})
+        self.assertEqual(payload,{'ok':True,'items':140,'version':3.1})
+
+    def test_operational_interface_stays_clean(self):
+        html=Path('index.html').read_text(encoding='utf-8')
+        self.assertNotIn('Sin resultados',html)
+        self.assertNotIn('Mostrar más',html)
+        self.assertNotIn('0 de 140 revisados',html)
+        self.assertNotIn('id="saveState"',html)
+        self.assertIn('Ruta Verde',html)
+        self.assertIn('Más opciones',html)
+
+    def test_cleanup_workflow_is_manual_and_guarded(self):
+        workflow=Path('.github/workflows/cleanup-obsolete.yml').read_text(encoding='utf-8')
+        self.assertIn('workflow_dispatch',workflow)
+        self.assertIn('confirmar_eliminacion',workflow)
+        self.assertTrue(Path('tools/cleanup_obsolete.py').is_file())
 
 
 if __name__=='__main__':

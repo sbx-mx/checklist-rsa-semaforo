@@ -4,53 +4,43 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#006241">
-  <meta name="description" content="Checklist operativo ICA y semáforo RSA">
-  <title>RSA Digital 3.0 | Checklist ICA</title>
+  <meta name="description" content="Recorrido operativo ICA y semáforo RSA">
+  <title>RSA Digital 3.1 | Ruta Verde</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" href="./icono-rsa.png">
   <link rel="apple-touch-icon" href="./icono-rsa.png">
   <link rel="stylesheet" href="./static/styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#checklist">Ir al checklist</a>
+  <a class="skip-link" href="#recorrido">Ir al recorrido</a>
   <header class="app-header">
-    <a class="brand" href="#resumen" aria-label="RSA Digital, inicio">
+    <a class="brand" href="#inicio" aria-label="RSA Digital, inicio">
       <img src="./icono-rsa.png" alt="" width="38" height="38">
-      <span><strong>RSA Digital</strong><small>Checklist ICA · v3.0</small></span>
+      <span><strong>RSA Digital</strong><small>Ruta Verde · v3.1</small></span>
     </a>
     <nav class="main-nav" aria-label="Navegación principal">
-      <a href="#resumen">Resumen</a>
-      <a href="#auditoria">Auditoría</a>
-      <a href="#checklist">Checklist</a>
+      <a href="#preparar"><span>1</span> Preparar</a>
+      <a href="#recorrido"><span>2</span> Recorrer</a>
+      <a href="#acciones"><span>3</span> Corregir</a>
+      <a href="#resultado"><span>4</span> Compartir</a>
     </nav>
-    <div class="header-tools">
-      <span id="saveState" class="save-state" role="status">Listo</span>
-      <button id="exportJsonBtn" class="icon-button" type="button" title="Guardar respaldo JSON">Guardar JSON</button>
-      <button id="importJsonBtn" class="icon-button" type="button" title="Abrir respaldo JSON">Abrir</button>
-      <input id="importJsonFile" class="sr-only" type="file" accept="application/json,.json">
-    </div>
   </header>
 
   <main>
-    <section id="resumen" class="overview section-anchor">
+    <section id="inicio" class="overview section-anchor">
       <div class="overview-copy">
         <span class="eyebrow">Juntémonos más</span>
-        <h1>Auditorías claras.<br>Acciones que avanzan.</h1>
-        <p>Evalúa únicamente lo observado, documenta la corrección y mantén el foco en una ejecución consistente.</p>
-        <details class="quick-guide">
-          <summary>Cómo usar el checklist</summary>
-          <ol>
-            <li><strong>Observa:</strong> no necesitas marcar todo.</li>
-            <li><strong>Evalúa:</strong> solo “No cumple” penaliza ICA/RSA.</li>
-            <li><strong>Documenta:</strong> agrega comentario, acción o foto cuando aporte valor.</li>
-            <li><strong>Comparte:</strong> imprime el reporte o guarda el respaldo JSON.</li>
-          </ol>
-        </details>
+        <h1>Tu tienda,<br>lista para celebrar.</h1>
+        <p>Un recorrido claro para cuidar a partners, clientes y tienda. Atiende primero lo que más protege la operación.</p>
+        <div class="route-note"><span aria-hidden="true">★</span><div><strong>Ruta Verde</strong><small>Críticos primero. Una decisión a la vez.</small></div></div>
       </div>
-      <div class="score-card" aria-label="Resultado actual">
-        <div class="score-topline"><span>Resultado actual</span><span id="reviewedLabel">0 de 140 revisados</span></div>
-        <div class="progress-track" aria-hidden="true"><span id="progressBar"></span></div>
-        <div class="score-main"><div><span>ICA</span><strong id="icaScore">100</strong></div><div id="rsaStatus" class="rsa-state celebrate"><span>Estado RSA</span><strong>CELEBRAR</strong></div></div>
+      <div id="resultado" class="score-card section-anchor" aria-label="Resultado actual">
+        <div class="score-topline"><span>Resultado actual</span><span id="routeMessage">Mantén los críticos en cero</span></div>
+        <div class="progress-track" role="progressbar" aria-label="Avance del recorrido" aria-valuemin="0" aria-valuemax="140" aria-valuenow="0"><span id="progressBar"></span></div>
+        <div class="score-main">
+          <div><span>ICA</span><strong id="icaScore">100</strong></div>
+          <div id="rsaStatus" class="rsa-state celebrate"><span>Estado RSA</span><strong>CELEBRAR</strong><small id="statusHelp">La operación está en verde</small></div>
+        </div>
         <div class="metric-row">
           <div><strong id="critCount">0</strong><span>Críticos</span></div>
           <div><strong id="mayCount">0</strong><span>Mayores</span></div>
@@ -60,8 +50,8 @@
       </div>
     </section>
 
-    <section id="auditoria" class="audit-card section-anchor" aria-labelledby="auditTitle">
-      <div><span class="eyebrow">Datos del recorrido</span><h2 id="auditTitle">Auditoría</h2></div>
+    <section id="preparar" class="audit-card section-anchor" aria-labelledby="auditTitle">
+      <div><span class="step-label">Paso 1 · Preparar</span><h2 id="auditTitle">¿Dónde iniciamos?</h2><p>Completa los datos básicos del recorrido.</p></div>
       <div class="audit-fields">
         <label>Tienda<input id="store" autocomplete="organization" placeholder="Nombre / CeCo"></label>
         <label>Auditor<input id="auditor" autocomplete="name" placeholder="Nombre"></label>
@@ -70,33 +60,48 @@
       </div>
     </section>
 
-    <section id="checklist" class="checklist-section section-anchor" aria-labelledby="checklistTitle">
+    <section id="recorrido" class="journey section-anchor" aria-labelledby="journeyTitle">
       <div class="section-heading">
-        <div><span class="eyebrow">140 puntos de control</span><h2 id="checklistTitle">Checklist operativo</h2></div>
-        <div class="section-actions"><button id="printBtn" class="button primary" type="button">Generar reporte</button><button id="clearBtn" class="button quiet" type="button">Nueva auditoría</button></div>
+        <div><span class="step-label">Paso 2 · Recorrer</span><h2 id="journeyTitle">Siguiente punto</h2><p id="pendingSummary">Prioridad operativa: seguridad e inocuidad.</p></div>
+        <button id="undoBtn" class="button quiet" type="button" disabled>Deshacer última</button>
       </div>
 
-      <div class="toolbar" aria-label="Buscar y filtrar">
-        <label class="search-box"><span class="sr-only">Buscar</span><input id="search" type="search" placeholder="Buscar punto, código o contexto…"><kbd>⌘ K</kbd></label>
-        <label><span>Categoría</span><select id="categoryFilter"></select></label>
-        <label><span>Estado</span><select id="statusFilter"><option value="Todos">Todos</option><option value="Sin evaluar">Sin evaluar</option><option value="Cumple">Cumple</option><option value="No cumple">No cumple</option><option value="N/A">N/A</option><option value="Con evidencia">Con evidencia</option></select></label>
-        <label><span>Sección</span><select id="sectionFilter"><option value="Todas">Todas</option></select></label>
-      </div>
-
-      <div class="checklist-layout">
-        <aside class="section-index" aria-label="Secciones del checklist">
-          <div class="index-title"><span>Secciones</span><button id="resetFilters" type="button">Ver todo</button></div>
+      <div class="journey-layout">
+        <aside class="section-index" aria-label="Áreas del recorrido">
+          <div class="index-title"><span>Áreas pendientes</span><button id="resetRoute" type="button">Ruta completa</button></div>
           <div id="sectionNav"></div>
-          <div class="legend-compact">
-            <span><i class="dot green"></i>Cumple</span><span><i class="dot red"></i>No cumple</span><span><i class="dot gray"></i>N/A</span>
-          </div>
         </aside>
-        <div class="items-column">
-          <div id="resultCount" class="result-count" aria-live="polite"></div>
-          <div id="items" class="items"></div>
-          <div id="empty" class="empty" hidden><strong>Sin resultados</strong><span>Prueba con otro filtro o término de búsqueda.</span></div>
-          <button id="moreBtn" class="button more" type="button" hidden>Mostrar más</button>
+        <div class="focus-column">
+          <div class="focus-tools">
+            <label class="search-box"><span class="sr-only">Buscar punto</span><input id="search" type="search" placeholder="Buscar código o punto…"><kbd>⌘ K</kbd></label>
+            <label class="route-select"><span class="sr-only">Vista</span><select id="viewFilter"><option value="pending">Pendientes</option><option value="fail">Por corregir</option><option value="evidence">Con evidencia</option></select></label>
+          </div>
+          <div id="items" class="items" aria-live="polite"></div>
+          <div id="routeComplete" class="route-complete" hidden>
+            <span aria-hidden="true">✓</span><div><strong>Recorrido al día</strong><small>No hay puntos pendientes en esta vista.</small></div>
+          </div>
         </div>
+      </div>
+    </section>
+
+    <section id="acciones" class="actions-card section-anchor" aria-labelledby="actionsTitle">
+      <div><span class="step-label">Paso 3 · Corregir</span><h2 id="actionsTitle">Cierra las brechas</h2><p>Revisa únicamente los hallazgos y documenta la acción.</p></div>
+      <button id="reviewFailsBtn" class="button secondary" type="button">Ver puntos por corregir <span id="failCount">0</span></button>
+    </section>
+
+    <section class="share-card" aria-labelledby="shareTitle">
+      <div><span class="step-label">Paso 4 · Compartir</span><h2 id="shareTitle">Deja evidencia clara</h2><p>Genera el reporte con hallazgos y acciones documentadas.</p></div>
+      <div class="share-actions">
+        <button id="printBtn" class="button primary" type="button">Generar reporte</button>
+        <details class="utility-menu">
+          <summary>Más opciones</summary>
+          <div>
+            <button id="exportJsonBtn" type="button">Respaldar auditoría</button>
+            <button id="importJsonBtn" type="button">Restaurar respaldo</button>
+            <button id="clearBtn" class="danger-link" type="button">Iniciar auditoría nueva</button>
+          </div>
+        </details>
+        <input id="importJsonFile" class="sr-only" type="file" accept="application/json,.json">
       </div>
     </section>
   </main>
@@ -110,4 +115,3 @@
   <script src="./static/app.js" defer></script>
 </body>
 </html>
-

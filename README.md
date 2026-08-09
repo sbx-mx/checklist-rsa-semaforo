@@ -1,6 +1,6 @@
-# RSA Digital 3.0
+# RSA Digital 3.1 · Ruta Verde
 
-Checklist operativo ICA y semáforo RSA con base JSON, navegación limpia, borrador automático y respaldo de auditorías.
+Checklist operativo ICA y semáforo RSA con recorrido guiado, prioridades operativas, borrador automático y respaldo discreto de auditorías.
 
 ## Ejecutar con Python
 
@@ -20,3 +20,6 @@ node --check static/app.js
 node --check sw.js
 ```
 
+## Limpieza segura
+
+`python tools/cleanup_obsolete.py` muestra los residuos conocidos sin modificar nada. Usa `--apply` para confirmar localmente. En GitHub, el workflow **Limpiar archivos obsoletos** requiere activación manual y confirmación explícita antes de crear un commit.
