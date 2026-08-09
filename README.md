@@ -1,6 +1,19 @@
-# RSA Digital 3.1 · Ruta Verde
+# RSA Digital 3.2 · Juntémonos más
 
-Checklist operativo ICA y semáforo RSA con recorrido guiado, prioridades operativas, borrador automático y respaldo discreto de auditorías.
+Checklist operativo ICA y semáforo RSA con evaluación modal, evidencia en cualquier resultado, recorrido recuperable y exportación resumida de oportunidades.
+
+## 10 mejoras de navegación
+
+1. Instructivo breve en el inicio.
+2. Un solo botón para abrir criterio, decisión y evidencia.
+3. Ventana amplia que mantiene visible el contexto de la penalización.
+4. Evidencia disponible también cuando el punto cumple.
+5. Guardar y continuar lleva al siguiente punto prioritario.
+6. Menú de áreas compacto con conteos según la vista activa.
+7. Priorización por impacto en Semáforo Celebrar.
+8. Modo Corregir con regreso directo al recorrido pendiente.
+9. Mensaje accionable para recuperar el estado Celebrar.
+10. Exportación con datos de auditoría y solo oportunidades.
 
 ## Ejecutar con Python
 

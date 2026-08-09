@@ -1,7 +1,7 @@
 {
-  "name": "RSA Digital 3.1 · Ruta Verde",
+  "name": "RSA Digital 3.2 · Juntémonos más",
   "short_name": "RSA Digital",
-  "description": "Ruta operativa guiada para checklist ICA y semáforo RSA",
+  "description": "Observa, corrige y avanza hacia un Semáforo Celebrar",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

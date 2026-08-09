@@ -4,11 +4,12 @@
   const STORAGE_KEY = 'rsa-digital-draft-v3';
   let DATA = [];
   let saveTimer;
+  let activeId = null;
+  let modalOriginalStatus = '';
   const history = [];
   const state = {
     status: {}, notes: {}, actions: {}, owner: {}, due: {}, photos: {},
     query: '', section: 'Todas', view: 'pending', printMode: false,
-    ctx: new Set(), ev: new Set(),
     meta: {store: '', auditor: '', date: '', shift: 'Apertura'}
   };
 
@@ -30,14 +31,24 @@
       (state.owner[id] || '').trim() || state.due[id] || (state.photos[id] || []).length);
   }
 
-  function isExportable(item) { return state.status[item.id] === 'fail' || hasEvidence(item.id); }
-  function statusLabel(status) { return status === 'comply' ? 'Cumple' : status === 'fail' ? 'No cumple' : status === 'na' ? 'N/A' : 'Pendiente'; }
+  function statusLabel(status) { return status === 'comply' ? 'Cumple' : status === 'fail' ? 'No cumple' : status === 'na' ? 'No aplica' : 'Pendiente'; }
   function badgeClass(category) { return category === 'Crítico' ? 'critical' : category === 'Mayor' || category === 'Mayor ICA' ? 'major' : ''; }
   function priority(item) {
-    if (item.category === 'Crítico' || item.semCategory === 'Critico') return 0;
-    if (item.category === 'Mayor' || item.category === 'Mayor ICA' || item.semCategory === 'Mayor') return 1;
-    if (item.semCategory === 'Menor') return 2;
-    return 3;
+    const section = item.section;
+    if (section.startsWith('Críticos')) return 0;
+    if (section.startsWith('Riesgo Inminente')) return 1;
+    if (section.startsWith('Mayores RSA / ICA')) return 2;
+    if (section.startsWith('Mayores RSA')) return 3;
+    if (section.startsWith('Mayores ICA')) return 4;
+    if (section.startsWith('Menores RSA')) return 5;
+    return 6;
+  }
+
+  function priorityLabel(item) {
+    if (priority(item) === 0) return 'Protege el semáforo';
+    if (priority(item) === 1) return 'Riesgo operativo';
+    if (priority(item) <= 3) return 'Impacto RSA';
+    return 'Control operativo';
   }
 
   function calculate() {
@@ -57,7 +68,7 @@
       if (hasEvidence(item.id)) evidence++;
     });
     let label = 'CELEBRAR', className = 'celebrate', help = 'La operación está en verde';
-    if (crit >= 3 || may >= 5) { label = 'APOYAR'; className = 'support'; help = 'Atiende primero los hallazgos críticos'; }
+    if (crit >= 3 || may >= 5) { label = 'APOYAR'; className = 'support'; help = 'Resuelve críticos antes de continuar'; }
     else if (crit >= 1 || may >= 3 || men >= 6) { label = 'SUPERVISAR'; className = 'supervise'; help = 'Cierra las brechas prioritarias'; }
     const score = Math.max(0, 100 - points);
     $('icaScore').textContent = score;
@@ -67,13 +78,15 @@
     $('evCount').textContent = evidence;
     $('failCount').textContent = failures;
     $('progressBar').style.width = `${DATA.length ? reviewed / DATA.length * 100 : 0}%`;
-    const progress = document.querySelector('.progress-track');
-    progress.setAttribute('aria-valuenow', reviewed);
+    document.querySelector('.progress-track').setAttribute('aria-valuenow', reviewed);
     const rsa = $('rsaStatus');
     rsa.className = `rsa-state ${className}`;
     rsa.querySelector('strong').textContent = label;
     $('statusHelp').textContent = help;
-    $('routeMessage').textContent = crit ? `${crit} crítico${crit === 1 ? '' : 's'} por resolver` : may >= 3 ? 'Reduce hallazgos mayores' : 'Mantén los críticos en cero';
+    $('routeMessage').textContent = label === 'CELEBRAR' ? 'Semáforo Celebrar' : `${failures} oportunidad${failures === 1 ? '' : 'es'} activa${failures === 1 ? '' : 's'}`;
+    const goal = $('greenGoal');
+    goal.className = `green-goal ${className}`;
+    goal.querySelector('small').textContent = crit ? `Resuelve ${crit} crítico${crit === 1 ? '' : 's'} para volver a verde.` : may >= 3 ? `Reduce mayores a 2 o menos para Celebrar.` : men >= 6 ? `Reduce menores a 5 o menos para Celebrar.` : 'Mantén críticos en 0 y mayores en máximo 2.';
     return {crit, may, men, points, evidence, reviewed, failures, rsa: label, ica: score};
   }
 
@@ -81,11 +94,11 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       try {
-        const draft = {version: 3.1, status: state.status, notes: state.notes, actions: state.actions,
+        const draft = {version: 3.2, status: state.status, notes: state.notes, actions: state.actions,
           owner: state.owner, due: state.due, meta: state.meta, updated_at: new Date().toISOString()};
         localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
       } catch (error) { console.warn('No fue posible guardar el borrador', error); }
-    }, 260);
+    }, 240);
   }
 
   function sanitizeAuditState() {
@@ -107,9 +120,7 @@
     } catch (error) { console.warn('Borrador inválido', error); }
   }
 
-  function syncMetaToInputs() {
-    for (const id of ['store','auditor','date','shift']) $(id).value = state.meta[id] || '';
-  }
+  function syncMetaToInputs() { for (const id of ['store','auditor','date','shift']) $(id).value = state.meta[id] || ''; }
 
   function matchingItems() {
     const query = normalized(state.query).trim();
@@ -123,13 +134,21 @@
     }).sort((a, b) => priority(a) - priority(b) || DATA.indexOf(a) - DATA.indexOf(b));
   }
 
+  function viewCount(section) {
+    return DATA.filter(item => (section === 'Todas' || item.section === section) &&
+      (state.view === 'pending' ? !state.status[item.id] : state.view === 'fail' ? state.status[item.id] === 'fail' : hasEvidence(item.id))).length;
+  }
+
   function renderSectionNav() {
     const sections = [...new Set(DATA.map(item => item.section))];
-    $('sectionNav').innerHTML = sections.map(section => {
-      const pending = DATA.filter(item => item.section === section && !state.status[item.id]).length;
-      if (!pending && state.view === 'pending') return '';
-      return `<button class="section-link ${state.section === section ? 'active' : ''}" type="button" data-section="${esc(section)}"><span>${esc(section.replace(' / ', ' · '))}</span><strong>${pending}</strong></button>`;
-    }).join('');
+    const allCount = viewCount('Todas');
+    $('sectionNav').innerHTML = `<button class="area-option ${state.section === 'Todas' ? 'active' : ''}" type="button" data-section="Todas"><span><strong>Ruta priorizada</strong><small>Mayor impacto primero</small></span><b>${allCount}</b></button>` +
+      sections.map(section => {
+        const count = viewCount(section);
+        return `<button class="area-option ${state.section === section ? 'active' : ''}" type="button" data-section="${esc(section)}"><span><strong>${esc(section.replace(' / ', ' · '))}</strong><small>${priority(DATA.find(item => item.section === section)) <= 3 ? 'Impacto directo en el objetivo' : 'Control ICA'}</small></span><b>${count}</b></button>`;
+      }).join('');
+    $('activeAreaLabel').textContent = state.section === 'Todas' ? 'Ruta priorizada' : state.section.replace(' / ', ' · ');
+    $('activeAreaCount').textContent = viewCount(state.section);
   }
 
   function photoHtml(id) {
@@ -137,32 +156,72 @@
       `<span class="photo"><img src="${esc(src)}" alt="Evidencia ${index + 1}"><button type="button" data-action="remove-photo" data-index="${index}" aria-label="Eliminar foto">×</button></span>`).join('');
   }
 
-  function itemHtml(item, expanded = false) {
+  function itemHtml(item) {
     const status = state.status[item.id] || '';
-    const contextOpen = state.ctx.has(item.id);
-    const evidenceOpen = state.ev.has(item.id) || expanded || state.view !== 'pending';
-    return `<article class="item ${status} ${isExportable(item) ? 'exportable' : ''}" data-id="${item.id}">
-      <div class="priority-strip"><span>${priority(item) === 0 ? 'Prioridad alta' : 'Punto operativo'}</span><span>${esc(item.section)}</span></div>
+    const action = state.view === 'fail' ? 'Abrir y corregir' : status ? 'Revisar detalle' : 'Evaluar punto';
+    return `<article class="item ${status}" data-id="${item.id}">
+      <div class="priority-strip"><span>${priorityLabel(item)}</span><span>${esc(item.section)}</span></div>
       <div class="item-main">
-        <div>
-          <div class="item-code">${esc(item.id)} · ${esc(item.code)}</div>
-          <div class="question">${esc(item.question)}</div>
-          <div class="badges"><span class="badge ${badgeClass(item.category)}">${esc(item.category)}</span><span class="badge">${item.points} pts ICA</span>${item.semCount ? `<span class="badge">RSA · ${esc(item.semCategory)}</span>` : ''}${status ? `<span class="badge">${statusLabel(status)}</span>` : ''}</div>
-          <div class="item-tools"><button class="text-button" type="button" data-action="context">${contextOpen ? 'Ocultar' : 'Ver'} criterio</button>${state.view !== 'pending' ? `<button class="text-button" type="button" data-action="evidence">${evidenceOpen ? 'Ocultar' : 'Documentar'} acción</button>` : ''}</div>
-        </div>
-        <div class="status-actions" aria-label="Evaluar punto">
-          <button class="status-button comply ${status === 'comply' ? 'active' : ''}" data-action="status" data-status="comply" type="button"><span>✓</span>Cumple</button>
-          <button class="status-button fail ${status === 'fail' ? 'active' : ''}" data-action="status" data-status="fail" type="button"><span>!</span>No cumple</button>
-          <button class="status-button na ${status === 'na' ? 'active' : ''}" data-action="status" data-status="na" type="button"><span>—</span>No aplica</button>
-        </div>
+        <div><div class="item-code">${esc(item.id)} · ${esc(item.code)}</div><div class="question">${esc(item.question)}</div>
+        <div class="badges"><span class="badge ${badgeClass(item.category)}">${esc(item.category)}</span><span class="badge">${item.points} pts ICA</span>${item.semCount ? `<span class="badge">RSA · ${esc(item.semCategory)}</span>` : ''}${status ? `<span class="badge status-${status}">${statusLabel(status)}</span>` : ''}</div></div>
+        <button class="open-evaluation" type="button" data-action="open"><span>${status ? '↗' : '→'}</span><strong>${action}</strong><small>Criterio, respuesta y evidencia</small></button>
       </div>
-      ${contextOpen ? `<div class="detail-panel"><strong>Criterio de evaluación</strong><p>${esc(item.context)}</p></div>` : ''}
-      ${evidenceOpen ? `<div class="evidence-panel"><div class="evidence-grid">
-        <label>Situación observada<textarea data-field="notes" placeholder="Describe lo observado…">${esc(state.notes[item.id] || '')}</textarea></label>
-        <label>Acción correctiva<textarea data-field="actions" placeholder="Qué se corrigió o queda pendiente…">${esc(state.actions[item.id] || '')}</textarea></label>
-        <div class="owner-stack"><label>Responsable<input data-field="owner" value="${esc(state.owner[item.id] || '')}" placeholder="Nombre"></label><label>Fecha compromiso<input data-field="due" type="date" value="${esc(state.due[item.id] || '')}"></label><label>Foto opcional<input class="photo-input" data-field="photos" type="file" accept="image/*" capture="environment" multiple></label><div class="photo-preview">${photoHtml(item.id)}</div></div>
-      </div></div>` : ''}
     </article>`;
+  }
+
+  function modalHtml(item) {
+    const status = state.status[item.id] || '';
+    const isComply = status === 'comply';
+    return `<article class="modal-point" data-id="${item.id}">
+      <header class="modal-point-head"><div><div class="item-code">${esc(item.id)} · ${esc(item.code)}</div><h2 id="modalQuestion">${esc(item.question)}</h2><div class="badges"><span class="badge ${badgeClass(item.category)}">${esc(item.category)}</span><span class="badge">${item.points} pts ICA</span>${item.semCount ? `<span class="badge">RSA · ${esc(item.semCategory)}</span>` : ''}</div></div><div class="impact-card"><span>Impacto</span><strong>${priorityLabel(item)}</strong><small>${item.semCount ? `Puede sumar 1 ${esc(item.semCategory)} al semáforo.` : `Puede restar ${item.points} puntos ICA.`}</small></div></header>
+      <section class="criterion-card"><span>Criterio de evaluación</span><p>${esc(item.context)}</p></section>
+      <section class="modal-decision"><div><span class="modal-section-label">1 · Decide</span><h3>¿Qué observaste?</h3></div><div class="modal-status-actions">
+        <button class="modal-status comply ${status === 'comply' ? 'active' : ''}" data-modal-status="comply" type="button"><span>✓</span><strong>Cumple</strong><small>La práctica está asegurada</small></button>
+        <button class="modal-status fail ${status === 'fail' ? 'active' : ''}" data-modal-status="fail" type="button"><span>!</span><strong>No cumple</strong><small>Requiere corrección</small></button>
+        <button class="modal-status na ${status === 'na' ? 'active' : ''}" data-modal-status="na" type="button"><span>—</span><strong>No aplica</strong><small>No corresponde observarlo</small></button>
+      </div></section>
+      <section class="modal-evidence"><div class="evidence-heading"><div><span class="modal-section-label">2 · Documenta</span><h3>Evidencia ${isComply ? 'del cumplimiento' : 'de la observación'}</h3><p>Opcional en cualquier respuesta. Úsala para reconocer, corregir o dar seguimiento.</p></div><span class="evidence-tag">Foto opcional</span></div>
+        <div class="evidence-grid"><label>Situación observada<textarea data-field="notes" placeholder="${isComply ? 'Describe la práctica correcta…' : 'Describe lo observado…'}">${esc(state.notes[item.id] || '')}</textarea></label><label>Acción o seguimiento<textarea data-field="actions" placeholder="${isComply ? 'Cómo se mantendrá este estándar…' : 'Qué se corrigió o queda pendiente…'}">${esc(state.actions[item.id] || '')}</textarea></label>
+        <div class="owner-stack"><label>Responsable<input data-field="owner" value="${esc(state.owner[item.id] || '')}" placeholder="Nombre"></label><label>Fecha compromiso<input data-field="due" type="date" value="${esc(state.due[item.id] || '')}"></label><label class="photo-label"><span>Agregar evidencia</span><input class="photo-input" data-field="photos" type="file" accept="image/*" capture="environment" multiple></label><div class="photo-preview">${photoHtml(item.id)}</div></div></div>
+      </section>
+    </article>`;
+  }
+
+  function opportunityHtml(item) {
+    return `<article class="print-opportunity"><div class="priority-strip"><span>${priorityLabel(item)}</span><span>${esc(item.section)}</span></div><div class="print-opportunity-body"><div class="item-code">${esc(item.id)} · ${esc(item.code)}</div><h2>${esc(item.question)}</h2><div class="print-grid"><div><span>Situación observada</span><p>${esc(state.notes[item.id] || 'Sin detalle registrado')}</p></div><div><span>Acción correctiva</span><p>${esc(state.actions[item.id] || 'Pendiente de documentar')}</p></div><div><span>Responsable</span><p>${esc(state.owner[item.id] || 'Por asignar')}</p></div><div><span>Fecha compromiso</span><p>${esc(state.due[item.id] || 'Por definir')}</p></div></div></div></article>`;
+  }
+
+  function renderModalContent() {
+    if (!activeId) return;
+    const item = DATA.find(row => row.id === activeId);
+    if (!item) return;
+    $('modalProgress').textContent = `${item.section} · ${item.id}`;
+    $('modalContent').innerHTML = modalHtml(item);
+  }
+
+  function openEvaluation(id) {
+    activeId = id;
+    modalOriginalStatus = state.status[id] || '';
+    renderModalContent();
+    const modal = $('evaluationModal');
+    if (!modal.open) modal.showModal();
+  }
+
+  function finalizeModal(requireStatus = false) {
+    if (!activeId) return;
+    const next = state.status[activeId] || '';
+    if (requireStatus && !next) { toast('Selecciona Cumple, No cumple o No aplica'); return; }
+    if (next !== modalOriginalStatus) {
+      history.push({id: activeId, previous: modalOriginalStatus});
+      if (history.length > 20) history.shift();
+    }
+    scheduleSave();
+    const completed = activeId;
+    activeId = null;
+    $('evaluationModal').close();
+    render();
+    if (next) toast(next === 'comply' ? 'Cumplimiento registrado' : next === 'fail' ? 'Oportunidad enviada a Corregir' : 'Punto marcado como no aplicable');
+    else toast(`Punto ${completed} guardado sin respuesta`);
   }
 
   function render() {
@@ -170,23 +229,20 @@
     renderSectionNav();
     let rows = matchingItems();
     if (!rows.length && state.view === 'pending' && state.section !== 'Todas' && DATA.some(item => !state.status[item.id])) {
-      state.section = 'Todas';
-      renderSectionNav();
-      rows = matchingItems();
+      state.section = 'Todas'; renderSectionNav(); rows = matchingItems();
     }
     $('routeComplete').hidden = rows.length !== 0;
     if (state.printMode) {
-      const printable = DATA.filter(isExportable);
-      const groups = {};
-      printable.forEach(item => (groups[item.section] ??= []).push(item));
-      $('items').innerHTML = Object.entries(groups).map(([section, items]) => `<div class="group-title">${esc(section)}</div>${items.map(item => itemHtml(item, true)).join('')}`).join('');
+      const opportunities = DATA.filter(item => state.status[item.id] === 'fail').sort((a, b) => priority(a) - priority(b));
+      $('items').innerHTML = opportunities.map(opportunityHtml).join('');
     } else {
       $('items').innerHTML = rows[0] ? itemHtml(rows[0]) : '';
     }
     const pending = DATA.filter(item => !state.status[item.id]).length;
     const current = rows[0];
-    $('pendingSummary').textContent = current ? `${pending} pendientes · ahora: ${current.section}` : pending ? 'Cambia de área para continuar.' : 'Recorrido completo. Revisa hallazgos o genera el reporte.';
+    $('pendingSummary').textContent = current ? `${pending} pendientes · ${priorityLabel(current)} · ${current.section}` : pending ? 'Selecciona otra área para continuar.' : 'Recorrido completo. Revisa oportunidades o exporta el resumen.';
     $('undoBtn').disabled = history.length === 0;
+    $('modeBanner').hidden = state.view !== 'fail';
   }
 
   async function compressImage(file) {
@@ -196,8 +252,7 @@
     try {
       const image = await new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = url; });
       const ratio = Math.min(1, 1400 / Math.max(image.width, image.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(image.width * ratio); canvas.height = Math.round(image.height * ratio);
+      const canvas = document.createElement('canvas'); canvas.width = Math.round(image.width * ratio); canvas.height = Math.round(image.height * ratio);
       canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
       return canvas.toDataURL('image/jpeg', .78);
     } finally { URL.revokeObjectURL(url); }
@@ -208,25 +263,26 @@
     const selected = [...files].slice(0, Math.max(0, 6 - current.length));
     try {
       for (const file of selected) current.push(await compressImage(file));
-      state.photos[id] = current; state.ev.add(id); scheduleSave(); render();
-      toast(`${selected.length} foto(s) optimizada(s)`);
+      state.photos[id] = current; scheduleSave(); renderModalContent(); calculate(); toast(`${selected.length} foto(s) optimizada(s)`);
     } catch (error) { toast(error.message); }
   }
 
   function exportPayload() {
-    return {schema_version: 3.1, exported_at: new Date().toISOString(), audit: {...state.meta, result: calculate()},
-      audit_state: {status: state.status, notes: state.notes, actions: state.actions, owner: state.owner, due: state.due, photos: state.photos},
-      records: DATA.filter(isExportable).map(item => ({id:item.id, code:item.code, question:item.question, category:item.category,
-        status:statusLabel(state.status[item.id]), ica_points:state.status[item.id] === 'fail' ? item.points : 0,
-        rsa:state.status[item.id] === 'fail' && item.semCount ? item.semCategory : 'No cuenta', comment:state.notes[item.id] || '',
-        corrective_action:state.actions[item.id] || '', owner:state.owner[item.id] || '', due_date:state.due[item.id] || '', photos:state.photos[item.id] || [], context:item.context}))};
+    const result = calculate();
+    const opportunities = DATA.filter(item => state.status[item.id] === 'fail').sort((a, b) => priority(a) - priority(b)).map(item => ({
+      id:item.id, code:item.code, area:item.section, priority:priorityLabel(item), opportunity:item.question,
+      ica_points:item.points, rsa:item.semCount ? item.semCategory : 'No cuenta', observation:state.notes[item.id] || '',
+      corrective_action:state.actions[item.id] || '', owner:state.owner[item.id] || '', due_date:state.due[item.id] || '', photos:state.photos[item.id] || []
+    }));
+    return {schema_version:3.2, exported_at:new Date().toISOString(), summary:{store:state.meta.store, auditor:state.meta.auditor, date:state.meta.date, shift:state.meta.shift, ica:result.ica, rsa_status:result.rsa, critical:result.crit, major:result.may, minor:result.men, opportunity_count:opportunities.length}, opportunities,
+      audit_state:{status:state.status, notes:state.notes, actions:state.actions, owner:state.owner, due:state.due, photos:state.photos}};
   }
 
   function downloadJson() {
     const blob = new Blob([JSON.stringify(exportPayload(), null, 2)], {type:'application/json'});
     const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
     link.download = `RSA_${(state.meta.store || 'auditoria').replace(/[^a-z0-9_-]+/gi, '_')}_${state.meta.date || today()}.json`;
-    link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 500); toast('Respaldo generado');
+    link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 500); toast('Respaldo resumido generado');
   }
 
   async function importJson(file) {
@@ -235,33 +291,31 @@
       if (!imported || typeof imported !== 'object') throw new Error('El respaldo no contiene una auditoría compatible');
       for (const key of ['status','notes','actions','owner','due','photos']) state[key] = imported[key] || {};
       sanitizeAuditState();
-      const audit = payload.audit || {};
+      const audit = payload.summary || payload.audit || {};
       state.meta = {store:audit.store || audit.tienda || '', auditor:audit.auditor || '', date:audit.date || audit.fecha || today(), shift:['Apertura','Intermedio','Cierre'].includes(audit.shift || audit.turno) ? (audit.shift || audit.turno) : 'Apertura'};
-      state.ctx.clear(); state.ev.clear(); history.length = 0; syncMetaToInputs(); scheduleSave(); render(); toast('Auditoría restaurada');
+      history.length = 0; state.view = 'pending'; state.section = 'Todas'; syncMetaToInputs(); scheduleSave(); render(); toast('Auditoría restaurada');
     } catch (error) { toast(error.message); }
   }
 
+  function populatePrintSummary() {
+    const result = calculate();
+    $('printStore').textContent = state.meta.store || 'Sin registrar'; $('printAuditor').textContent = state.meta.auditor || 'Sin registrar';
+    $('printDate').textContent = state.meta.date || 'Sin registrar'; $('printShift').textContent = state.meta.shift || 'Sin registrar';
+    $('printResult').textContent = `ICA ${result.ica} · ${result.rsa}`;
+    $('printOpportunityCount').textContent = `${result.failures} oportunidad${result.failures === 1 ? '' : 'es'} priorizada${result.failures === 1 ? '' : 's'}`;
+  }
+
   function printSmart() {
-    if (!DATA.some(isExportable)) { toast('Documenta un hallazgo o evidencia para generar el reporte'); return; }
-    state.printMode = true; render(); document.body.classList.add('pdf-mode');
-    setTimeout(() => { window.print(); document.body.classList.remove('pdf-mode'); state.printMode = false; render(); }, 120);
+    populatePrintSummary(); state.printMode = true; document.body.classList.add('print-mode'); render();
+    setTimeout(() => { window.print(); document.body.classList.remove('print-mode'); state.printMode = false; render(); }, 120);
   }
 
   function clearAudit() {
     if (!confirm('¿Iniciar una auditoría nueva? Se eliminará el borrador actual.')) return;
     for (const key of ['status','notes','actions','owner','due','photos']) state[key] = {};
-    state.ctx.clear(); state.ev.clear(); history.length = 0; state.query = ''; state.section = 'Todas'; state.view = 'pending';
+    history.length = 0; state.query = ''; state.section = 'Todas'; state.view = 'pending';
     state.meta = {store:'', auditor:'', date:today(), shift:'Apertura'};
     localStorage.removeItem(STORAGE_KEY); $('search').value = ''; $('viewFilter').value = 'pending'; syncMetaToInputs(); render(); toast('Nueva auditoría lista');
-  }
-
-  function setStatus(id, next) {
-    history.push({id, previous: state.status[id] || ''});
-    if (history.length > 20) history.shift();
-    state.status[id] = next;
-    if (next === 'fail') state.ev.add(id);
-    scheduleSave(); render();
-    toast(next === 'comply' ? 'Punto completado' : next === 'fail' ? 'Hallazgo enviado a Corregir' : 'Punto marcado como no aplicable');
   }
 
   function undo() {
@@ -270,23 +324,29 @@
     scheduleSave(); render(); toast('Última respuesta restaurada');
   }
 
+  function returnToRoute() {
+    state.view = 'pending'; state.section = 'Todas'; state.query = ''; $('viewFilter').value = 'pending'; $('search').value = ''; render(); $('recorrido').scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
   function bindEvents() {
     $('search').addEventListener('input', event => { state.query = event.target.value; render(); });
     $('viewFilter').addEventListener('change', event => { state.view = event.target.value; state.section = 'Todas'; render(); });
-    $('sectionNav').addEventListener('click', event => { const button = event.target.closest('[data-section]'); if (!button) return; state.section = button.dataset.section; render(); });
-    $('resetRoute').addEventListener('click', () => { state.section = 'Todas'; state.query = ''; $('search').value = ''; render(); });
+    $('sectionNav').addEventListener('click', event => { const button = event.target.closest('[data-section]'); if (!button) return; state.section = button.dataset.section; $('areaMenu').open = false; render(); });
     $('undoBtn').addEventListener('click', undo);
-    $('reviewFailsBtn').addEventListener('click', () => { state.view = 'fail'; state.section = 'Todas'; $('viewFilter').value = 'fail'; render(); $('recorrido').scrollIntoView({behavior:'smooth'}); });
-    $('items').addEventListener('click', event => {
-      const button = event.target.closest('button[data-action]'); if (!button) return;
-      const id = button.closest('[data-id]')?.dataset.id; if (!id) return;
-      if (button.dataset.action === 'status') setStatus(id, button.dataset.status);
-      else if (button.dataset.action === 'context') { state.ctx.has(id) ? state.ctx.delete(id) : state.ctx.add(id); render(); }
-      else if (button.dataset.action === 'evidence') { state.ev.has(id) ? state.ev.delete(id) : state.ev.add(id); render(); }
-      else if (button.dataset.action === 'remove-photo') { state.photos[id].splice(Number(button.dataset.index), 1); scheduleSave(); render(); }
+    $('backToRouteBtn').addEventListener('click', returnToRoute);
+    $('reviewFailsBtn').addEventListener('click', () => { state.view = 'fail'; state.section = 'Todas'; state.query = ''; $('search').value = ''; $('viewFilter').value = 'fail'; render(); $('recorrido').scrollIntoView({behavior:'smooth', block:'start'}); });
+    $('items').addEventListener('click', event => { const button = event.target.closest('[data-action="open"]'); if (button) openEvaluation(button.closest('[data-id]').dataset.id); });
+    $('evaluationModal').addEventListener('click', event => {
+      const modalStatus = event.target.closest('[data-modal-status]');
+      if (modalStatus && activeId) { state.status[activeId] = modalStatus.dataset.modalStatus; scheduleSave(); renderModalContent(); calculate(); return; }
+      const remove = event.target.closest('[data-action="remove-photo"]');
+      if (remove && activeId) { state.photos[activeId].splice(Number(remove.dataset.index), 1); scheduleSave(); renderModalContent(); calculate(); return; }
+      if (event.target === $('evaluationModal')) finalizeModal(false);
     });
-    $('items').addEventListener('input', event => { const field = event.target.dataset.field; const id = event.target.closest('[data-id]')?.dataset.id; if (!id || !['notes','actions','owner','due'].includes(field)) return; state[field][id] = event.target.value; scheduleSave(); calculate(); });
-    $('items').addEventListener('change', event => { const id = event.target.closest('[data-id]')?.dataset.id; if (id && event.target.dataset.field === 'photos') addPhotos(id, event.target.files); });
+    $('evaluationModal').addEventListener('input', event => { const field = event.target.dataset.field; if (!activeId || !['notes','actions','owner','due'].includes(field)) return; state[field][activeId] = event.target.value; scheduleSave(); calculate(); });
+    $('evaluationModal').addEventListener('change', event => { if (activeId && event.target.dataset.field === 'photos') addPhotos(activeId, event.target.files); });
+    $('evaluationModal').addEventListener('cancel', event => { event.preventDefault(); finalizeModal(false); });
+    $('modalCloseBtn').addEventListener('click', () => finalizeModal(false)); $('saveContinueBtn').addEventListener('click', () => finalizeModal(true));
     for (const id of ['store','auditor','date','shift']) $(id).addEventListener('input', event => { state.meta[id] = event.target.value; scheduleSave(); });
     $('printBtn').addEventListener('click', printSmart); $('clearBtn').addEventListener('click', clearAudit); $('exportJsonBtn').addEventListener('click', downloadJson);
     $('importJsonBtn').addEventListener('click', () => $('importJsonFile').click());

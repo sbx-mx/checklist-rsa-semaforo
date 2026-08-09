@@ -42,7 +42,7 @@ class RSADigitalTests(unittest.TestCase):
     def test_health(self):
         with self.get('/api/health') as response:
             payload=json.load(response)
-        self.assertEqual(payload,{'ok':True,'items':140,'version':3.1})
+        self.assertEqual(payload,{'ok':True,'items':140,'version':3.2})
 
     def test_operational_interface_stays_clean(self):
         html=Path('index.html').read_text(encoding='utf-8')
@@ -50,8 +50,20 @@ class RSADigitalTests(unittest.TestCase):
         self.assertNotIn('Mostrar más',html)
         self.assertNotIn('0 de 140 revisados',html)
         self.assertNotIn('id="saveState"',html)
-        self.assertIn('Ruta Verde',html)
+        self.assertIn('Mejoramos',html)
         self.assertIn('Más opciones',html)
+
+    def test_modal_navigation_and_clean_export_are_available(self):
+        html=Path('index.html').read_text(encoding='utf-8')
+        script=Path('static/app.js').read_text(encoding='utf-8')
+        self.assertIn('id="evaluationModal"',html)
+        self.assertIn('id="backToRouteBtn"',html)
+        self.assertIn('id="printStore"',html)
+        self.assertIn('Evidencia',html)
+        self.assertIn('Guardar y continuar',html)
+        self.assertIn('opportunities',script)
+        self.assertNotIn('Ver criterio',html)
+        self.assertNotIn('Ocultar acción',html)
 
     def test_cleanup_workflow_is_manual_and_guarded(self):
         workflow=Path('.github/workflows/cleanup-obsolete.yml').read_text(encoding='utf-8')

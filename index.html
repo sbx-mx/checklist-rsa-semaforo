@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#006241">
   <meta name="description" content="Recorrido operativo ICA y semáforo RSA">
-  <title>RSA Digital 3.1 | Ruta Verde</title>
+  <title>RSA Digital 3.2 | Juntémonos más</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" href="./icono-rsa.png">
   <link rel="apple-touch-icon" href="./icono-rsa.png">
@@ -16,13 +16,13 @@
   <header class="app-header">
     <a class="brand" href="#inicio" aria-label="RSA Digital, inicio">
       <img src="./icono-rsa.png" alt="" width="38" height="38">
-      <span><strong>RSA Digital</strong><small>Ruta Verde · v3.1</small></span>
+      <span><strong>RSA Digital</strong><small>Juntémonos más · v3.2</small></span>
     </a>
     <nav class="main-nav" aria-label="Navegación principal">
       <a href="#preparar"><span>1</span> Preparar</a>
       <a href="#recorrido"><span>2</span> Recorrer</a>
       <a href="#acciones"><span>3</span> Corregir</a>
-      <a href="#resultado"><span>4</span> Compartir</a>
+      <a href="#compartir"><span>4</span> Compartir</a>
     </nav>
   </header>
 
@@ -30,12 +30,20 @@
     <section id="inicio" class="overview section-anchor">
       <div class="overview-copy">
         <span class="eyebrow">Juntémonos más</span>
-        <h1>Tu tienda,<br>lista para celebrar.</h1>
-        <p>Un recorrido claro para cuidar a partners, clientes y tienda. Atiende primero lo que más protege la operación.</p>
-        <div class="route-note"><span aria-hidden="true">★</span><div><strong>Ruta Verde</strong><small>Críticos primero. Una decisión a la vez.</small></div></div>
+        <h1>Mejoramos<br>juntos.</h1>
+        <p>Observa, corrige y avanza.</p>
+        <details class="quick-guide">
+          <summary><span aria-hidden="true">?</span> Cómo hacer el recorrido</summary>
+          <ol>
+            <li><strong>Prepara:</strong> registra tienda, auditor, fecha y turno.</li>
+            <li><strong>Observa:</strong> abre cada punto y revisa el criterio completo.</li>
+            <li><strong>Documenta:</strong> agrega evidencia aun cuando el punto cumpla.</li>
+            <li><strong>Avanza:</strong> atiende críticos primero y cierra oportunidades.</li>
+          </ol>
+        </details>
       </div>
       <div id="resultado" class="score-card section-anchor" aria-label="Resultado actual">
-        <div class="score-topline"><span>Resultado actual</span><span id="routeMessage">Mantén los críticos en cero</span></div>
+        <div class="score-topline"><span>Objetivo del recorrido</span><span id="routeMessage">Semáforo Celebrar</span></div>
         <div class="progress-track" role="progressbar" aria-label="Avance del recorrido" aria-valuemin="0" aria-valuemax="140" aria-valuenow="0"><span id="progressBar"></span></div>
         <div class="score-main">
           <div><span>ICA</span><strong id="icaScore">100</strong></div>
@@ -47,11 +55,12 @@
           <div><strong id="menCount">0</strong><span>Menores</span></div>
           <div><strong id="evCount">0</strong><span>Evidencias</span></div>
         </div>
+        <div id="greenGoal" class="green-goal"><span aria-hidden="true">★</span><p><strong>Camino a Celebrar</strong><small>Protege críticos y resuelve oportunidades prioritarias.</small></p></div>
       </div>
     </section>
 
     <section id="preparar" class="audit-card section-anchor" aria-labelledby="auditTitle">
-      <div><span class="step-label">Paso 1 · Preparar</span><h2 id="auditTitle">¿Dónde iniciamos?</h2><p>Completa los datos básicos del recorrido.</p></div>
+      <div><span class="step-label">Paso 1 · Preparar</span><h2 id="auditTitle">Inicia tu recorrido</h2><p>Cuatro datos para dar contexto a la auditoría.</p></div>
       <div class="audit-fields">
         <label>Tienda<input id="store" autocomplete="organization" placeholder="Nombre / CeCo"></label>
         <label>Auditor<input id="auditor" autocomplete="name" placeholder="Nombre"></label>
@@ -62,37 +71,39 @@
 
     <section id="recorrido" class="journey section-anchor" aria-labelledby="journeyTitle">
       <div class="section-heading">
-        <div><span class="step-label">Paso 2 · Recorrer</span><h2 id="journeyTitle">Siguiente punto</h2><p id="pendingSummary">Prioridad operativa: seguridad e inocuidad.</p></div>
+        <div><span class="step-label">Paso 2 · Recorrer</span><h2 id="journeyTitle">Siguiente prioridad</h2><p id="pendingSummary">Seguridad e inocuidad primero.</p></div>
         <button id="undoBtn" class="button quiet" type="button" disabled>Deshacer última</button>
       </div>
 
-      <div class="journey-layout">
-        <aside class="section-index" aria-label="Áreas del recorrido">
-          <div class="index-title"><span>Áreas pendientes</span><button id="resetRoute" type="button">Ruta completa</button></div>
-          <div id="sectionNav"></div>
-        </aside>
-        <div class="focus-column">
-          <div class="focus-tools">
-            <label class="search-box"><span class="sr-only">Buscar punto</span><input id="search" type="search" placeholder="Buscar código o punto…"><kbd>⌘ K</kbd></label>
-            <label class="route-select"><span class="sr-only">Vista</span><select id="viewFilter"><option value="pending">Pendientes</option><option value="fail">Por corregir</option><option value="evidence">Con evidencia</option></select></label>
-          </div>
-          <div id="items" class="items" aria-live="polite"></div>
-          <div id="routeComplete" class="route-complete" hidden>
-            <span aria-hidden="true">✓</span><div><strong>Recorrido al día</strong><small>No hay puntos pendientes en esta vista.</small></div>
-          </div>
-        </div>
+      <div id="modeBanner" class="mode-banner" hidden>
+        <div><span aria-hidden="true">↻</span><p><strong>Estás corrigiendo oportunidades</strong><small>Tu recorrido pendiente está guardado.</small></p></div>
+        <button id="backToRouteBtn" class="button" type="button">Volver al recorrido</button>
+      </div>
+
+      <div class="focus-tools">
+        <details id="areaMenu" class="area-menu">
+          <summary><span><small>Área</small><strong id="activeAreaLabel">Ruta priorizada</strong></span><b id="activeAreaCount">140</b></summary>
+          <div id="sectionNav" class="area-options" aria-label="Seleccionar área"></div>
+        </details>
+        <label class="search-box"><span class="sr-only">Buscar punto</span><input id="search" type="search" placeholder="Buscar código o punto…"><kbd>⌘ K</kbd></label>
+        <label class="route-select"><span class="sr-only">Vista</span><select id="viewFilter"><option value="pending">Pendientes</option><option value="fail">Por corregir</option><option value="evidence">Con evidencia</option></select></label>
+      </div>
+
+      <div id="items" class="items" aria-live="polite"></div>
+      <div id="routeComplete" class="route-complete" hidden>
+        <span aria-hidden="true">✓</span><div><strong>Esta vista está al día</strong><small>Continúa con otra área o comparte el resultado.</small></div>
       </div>
     </section>
 
     <section id="acciones" class="actions-card section-anchor" aria-labelledby="actionsTitle">
-      <div><span class="step-label">Paso 3 · Corregir</span><h2 id="actionsTitle">Cierra las brechas</h2><p>Revisa únicamente los hallazgos y documenta la acción.</p></div>
-      <button id="reviewFailsBtn" class="button secondary" type="button">Ver puntos por corregir <span id="failCount">0</span></button>
+      <div><span class="step-label">Paso 3 · Corregir</span><h2 id="actionsTitle">Cierra las brechas</h2><p>Abre cada oportunidad, documenta la acción y regresa al recorrido cuando quieras.</p></div>
+      <button id="reviewFailsBtn" class="button secondary" type="button">Corregir oportunidades <span id="failCount">0</span></button>
     </section>
 
-    <section class="share-card" aria-labelledby="shareTitle">
-      <div><span class="step-label">Paso 4 · Compartir</span><h2 id="shareTitle">Deja evidencia clara</h2><p>Genera el reporte con hallazgos y acciones documentadas.</p></div>
+    <section id="compartir" class="share-card section-anchor" aria-labelledby="shareTitle">
+      <div><span class="step-label">Paso 4 · Compartir</span><h2 id="shareTitle">Resumen que mueve a la acción</h2><p>Exporta los datos del recorrido y únicamente las oportunidades relevantes.</p></div>
       <div class="share-actions">
-        <button id="printBtn" class="button primary" type="button">Generar reporte</button>
+        <button id="printBtn" class="button primary" type="button">Exportar resumen</button>
         <details class="utility-menu">
           <summary>Más opciones</summary>
           <div>
@@ -104,7 +115,27 @@
         <input id="importJsonFile" class="sr-only" type="file" accept="application/json,.json">
       </div>
     </section>
+
+    <section id="printSummary" class="print-summary" aria-label="Resumen de auditoría">
+      <div class="print-title"><img src="./icono-rsa.png" alt="" width="46" height="46"><div><span>RSA Digital</span><h1>Resumen de oportunidades</h1></div></div>
+      <div class="print-meta"><div><span>Tienda</span><strong id="printStore">—</strong></div><div><span>Auditor</span><strong id="printAuditor">—</strong></div><div><span>Fecha</span><strong id="printDate">—</strong></div><div><span>Turno</span><strong id="printShift">—</strong></div></div>
+      <div class="print-result"><span>Objetivo: Semáforo Celebrar</span><strong id="printResult">ICA 100 · CELEBRAR</strong><small id="printOpportunityCount">0 oportunidades</small></div>
+    </section>
   </main>
+
+  <dialog id="evaluationModal" class="evaluation-modal" aria-labelledby="modalQuestion">
+    <form method="dialog" class="modal-shell">
+      <div class="modal-topbar">
+        <div><span class="step-label">Evaluación del punto</span><strong id="modalProgress">Ruta priorizada</strong></div>
+        <button id="modalCloseBtn" class="modal-close" value="cancel" type="button" aria-label="Cerrar evaluación">×</button>
+      </div>
+      <div id="modalContent" class="modal-content"></div>
+      <div class="modal-footer">
+        <span id="modalSaveHint">Tu evidencia se guarda automáticamente.</span>
+        <button id="saveContinueBtn" class="button primary" value="default" type="button">Guardar y continuar</button>
+      </div>
+    </form>
+  </dialog>
 
   <footer class="project-footer">
     <p><strong>Diseñado por Jorge Alcantar Aguiar &amp; Enrique César Flores</strong></p>
